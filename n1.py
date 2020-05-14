@@ -3,17 +3,13 @@ from addition import TOKEN, SENDER_EMAIL, EMAIL_PASSWORD
 import discord
 import asyncio
 import time
-import json, requests
 
 
 TOKEN = TOKEN
-HIST = []
-ISWRITE = False
 
 
 class YLBotClient(discord.Client):
     async def on_ready(self):
-        # await message.channel.send('I am ready to track traffic. To get instructions type !help')
         print(f'{self.user} has connected to Discord!')
         for guild in self.guilds:
             print(
@@ -21,17 +17,37 @@ class YLBotClient(discord.Client):
                 f'{guild.name}(id: {guild.id})'
                 f'I am ready to to track students.')
 
-    # async def on_member_join(self, member):
-    #     await member.create_dm()
-    #     # global ISWRITE, HIST
-    #     # if ISWRITE:
-    #     #     HIST.append(member.name + ' ' + time.asctime().split()[3])
-    #     await member.dm_channel.send(
-    #         f'Hello, {member.name}!'
-    #     )
-
     async def on_group_join(self, channel, user):
         print(channel, user)
+
+    def transliteration(self, st):
+        a = {'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'E',
+             'Ж': 'Zh', 'З': 'Z', 'И': 'I', 'Й': 'I', 'К': 'K', 'Л': 'L', 'М': 'M',
+             'Н': 'N', 'О': 'O', 'П': 'P', 'Р': 'R', 'С': 'S', 'Т': 'T', 'У': 'U',
+             'Ф': 'F', 'Х': 'Kh', 'Ц': 'Tc', 'Ч': 'Ch', 'Ш': 'Sh', 'Щ': 'Shch',
+             'Ы': 'Y', 'Э': 'E', 'Ю': 'Iu', 'Я': 'Ia', 'а': 'a', 'б': 'b', 'в': 'v',
+             'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e', 'ж': 'zh', 'з': 'z', 'и': 'i',
+             'й': 'i', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o', 'п': 'p',
+             'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'kh', 'ц': 'tc',
+             'ч': 'ch', 'ш': 'sh', 'щ': 'shch', 'ы': 'y', 'э': 'e', 'ю': 'iu', 'я': 'ia'}
+        y = []
+        w = ''
+        s = st
+        s = s.split()
+        for i in range(len(s)):
+            t = s[i]
+            for u in range(len(t)):
+                if t[u] in a:
+                    w += a[t[u]]
+                else:
+                    if t[u] == 'ъ' or t[u] == 'ь' or t[u] == 'Ъ' or t[u] == 'Ь':
+                        continue
+                    else:
+                        w += t[u]
+            if len(w) != 0:
+                y.append(w)
+                w = ''
+        return ' '.join(y)
 
     def is_admin(self, message: discord.Message) -> bool:
         chann = message.channel
@@ -73,7 +89,7 @@ class YLBotClient(discord.Client):
             if ord(k) not in correctchrlist:
                 return False
             if k == '.':
-                if doubledot == True:
+                if doubledot:
                     return False
                 else:
                     doubledot = True
@@ -105,7 +121,6 @@ class YLBotClient(discord.Client):
                     await message.channel.send('Invalid argument values!')
                     return
             dop.append(str(a[3]))
-            # print(self.CorrectEmail(dop[3]))
             if not self.is_correct_email(dop[3]):
                 await message.channel.send('You are trying to set a wrong email!')
                 return
@@ -115,13 +130,11 @@ class YLBotClient(discord.Client):
             print(f'{message.author} set the lesson.')
             s = ['' if i == 1 else 's' for i in dop[:3]]
             await message.channel.send(f'The lesson should start at {dop[0]} hour{s[0]} {dop[1]} '
-                                       f'minute{s[1]} and lasts {dop[2]} minute{s[2]}.') #!!!
-            # global ISWRITE
-            # ISWRITE = True
+                                       f'minute{s[1]} and lasts {dop[2]} minute{s[2]}.')
             now = [int(i) for i in str(time.asctime().split()[3]).split(':')]
-            if now[0] > dop[0] or now[0] == dop[0] and now[1] > dop[1]:
+            if now[0] > dop[0] or now[0] == dop[0] and now[1] >= dop[1] :
                 dop[0] += 24
-            await asyncio.sleep((dop[0] * 3600 + dop[1] * 60) - (now[0] * 3600 + now[1] * 60 + now[2])) #!!!
+            await asyncio.sleep((dop[0] * 3600 + dop[1] * 60) - (now[0] * 3600 + now[1] * 60 + now[2]))
             lesson['At the beginning of the lesson, there were:'] = []
             lesson['At the middle of the lesson, there were:'] = []
             lesson['At the end of the lesson, there were:'] = []
@@ -129,42 +142,25 @@ class YLBotClient(discord.Client):
             for guild in client.guilds:
                 for member in guild.voice_channels[0].members:
                     lesson['At the beginning of the lesson, there were:'].append(member.name)
-                    # print(member.name)
             await asyncio.sleep(dop[2] * 30)
             for guild in client.guilds:
                 for member in guild.voice_channels[0].members:
                     lesson['At the middle of the lesson, there were:'].append(member.name)
-                    # print(member.name)
             await asyncio.sleep(dop[2] * 30)
             for guild in client.guilds:
                 for member in guild.voice_channels[0].members:
                     lesson['At the end of the lesson, there were:'].append(member.name)
-                    # print(member.name)
             await message.channel.send("The lesson is over!")
-            title = f'Report on the lesson that started at {dop[0]}:{dop[1]}'
-            print(title)
+            title = f'The report on the lesson that started at {dop[0]}:{dop[1]}'
             body = []
             for key in lesson.keys():
-                print(key)
-                print('\n'.join(lesson[key]))
                 body.append(key)
                 for i in lesson[key]:
-                    body.append(i)
+                    body.append(self.transliteration(i))
+                body.append(' ')
             body = '\n'.join(body)
-            # await guild.text_channels[0].send(guild.voice_channels[0].members)
-            # voice_channel = discord.utils.get(ctx.message.server.channels, name="channelname",
-            #                                   type=discord.ChannelType.voice)
-            # finds the members
-            # members = voice_channel.voice_members
-            # print(members)
-            # global HIST
-            # print('\n'.join(HIST))
-            # HIST = []
-            # ISWRITE = False
-            # print(title)
-            # print(body)
-            # letter = f'Subject: {title}\n{body}'
-            letter = body
+            letter = f'Subject: {title}\n\n{body}'
+            print(letter)
             REC_EMAIL = dop[3]
             SERVER = smtplib.SMTP('smtp.gmail.com', 587)
             SERVER.starttls()
@@ -172,36 +168,9 @@ class YLBotClient(discord.Client):
             SERVER.sendmail(SENDER_EMAIL, REC_EMAIL, letter)
             return
 
-        # if "member" in message.content.lower():
-        #     vch = discord.VoiceChannel
-        #     print(vch.members)
-        #     for guild in self.guilds:
-        #         print(guild.VoiceChannel.members)
-
-        # if "кот" in message.content.lower():
-        #     await message.channel.send(requests.get('https://api.thecatapi.com/v1/images/search').json()[0]['url'])
-        #     return
-        # if "собак" in message.content.lower():
-        #     await message.channel.send(requests.get('https://dog.ceo/api/breeds/image/random').json()['message'])
-        #     return
-        # await message.channel.send("Спасибо за сообщение")
-
-        # if "member" in message.content.lower():
-        #     voice_channel = discord.utils.get(ctx.message.server.channels, name="channelname", type=discord.ChannelType.voice)
-        #     print(111111111)
-        #     # finds the members
-        #     members = voice_channel.voice_members
-        #     memids = []
-        #     for member in members:
-        #         memids.append(member.id)
-        #     print(memids)
-        #     return
-
 
 client = YLBotClient()
 client.run(TOKEN)
-
-
 
 
 if __name__ == '__main__':
