@@ -16,6 +16,11 @@ class YLBotClient(discord.Client):
                 f'{self.user} has connected to chat:\n'
                 f'{guild.name}(id: {guild.id})'
                 f'I am ready to to track students.')
+        category = self.guilds[0].categories[0]
+        channel = category.channels[0]
+        await channel.send('Hello, my name is PopTracker.')
+        await channel.send('I am ready to to track students.')
+        await channel.send('To get the instructions, type !help')
 
     async def on_group_join(self, channel, user):
         print(channel, user)
